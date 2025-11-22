@@ -18,7 +18,8 @@ AncflowNF processes protein sequence data through:
 ```bash
 # Install Nextflow
 curl -s https://get.nextflow.io | bash
-sudo mv nextflow /usr/local/bin/
+mv nextflow ~/bin/ || mkdir -p ~/bin && mv nextflow ~/bin/
+export PATH="$HOME/bin:$PATH"
 
 # Run with Conda
 nextflow run main.nf -profile conda
