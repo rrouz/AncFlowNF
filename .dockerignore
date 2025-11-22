@@ -1,0 +1,36 @@
+# Git
+.git
+.gitignore
+
+# Nextflow
+work/
+.nextflow/
+.nextflow.log
+results/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test data (optional - comment out if you want to include)
+# protein_sequences.fasta
+
+# Documentation (not needed in container)
+*.md
+!README.md
+
+# Other
+*.sh

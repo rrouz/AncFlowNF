@@ -1,0 +1,23 @@
+name: ancflownf
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.9
+  - pip
+  - ete3
+  - biopython
+  - matplotlib
+  - seaborn
+  - umap-learn
+  - scipy
+  - numpy
+  - pandas
+  - prettytable
+  - scikit-learn
+  - iqtree
+  - mafft
+  - pip:
+      - dendropy
+      - git+https://github.com/rrouz/autophy@main

@@ -1,0 +1,42 @@
+# Nextflow work directory and cache
+work/
+.nextflow/
+.nextflow.*
+*.log
+.nextflow.log
+
+# Results and outputs
+results/
+results_docker/
+outputs/
+logs/
+alignments/
+iqtree/
+autophy/
+subtrees/
+output/
+asr_output/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.egg
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test data (optional - uncomment if you don't want to track test files)
+# protein_sequences.fasta
+# sample_runs/
+
+# Conda/Mamba environments
+.conda/
