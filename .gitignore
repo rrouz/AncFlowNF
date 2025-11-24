@@ -11,8 +11,6 @@ results_docker/
 outputs/
 logs/
 alignments/
-iqtree/
-autophy/
 subtrees/
 output/
 asr_output/
