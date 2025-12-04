@@ -55,7 +55,7 @@ process ASR_AUTOPHY {
         ancestral_autophy.state \\
         ancestral_autophy_sequences.fasta
     
-    # Step 5: Extract only MRCA sequences for each clade
+    # Step 5: Extract MRCA and second MRCA (parent) sequences for each clade
     python ${params.bin_dir}/extract_clade_mrcas.py \\
         autophy_tree.nwk \\
         \$CLUSTER_CSV \\
