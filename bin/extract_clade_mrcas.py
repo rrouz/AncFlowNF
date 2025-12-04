@@ -1,123 +1,90 @@
 #!/usr/bin/env python3
 """
-Extracts only the Most Recent Common Ancestor (MRCA) sequences for each clade.
-Filters the full ancestral sequences to keep only immediate ancestral nodes.
+Extract ancestral sequences up to the second MRCA (parent of MRCA) for each clade.
 """
 
 import sys
 import csv
 from collections import defaultdict
 from Bio import SeqIO, Phylo
-from io import StringIO
 
 def parse_cluster_csv(cluster_csv):
     """Parse AutoPhy cluster CSV and get sequences per cluster."""
     clusters = defaultdict(list)
-    with open(cluster_csv, 'r') as f:
+    with open(cluster_csv) as f:
         reader = csv.DictReader(f)
         for row in reader:
-            seq_id = row['Label']
-            cluster_id = row['Cluster']
-            clusters[cluster_id].append(seq_id)
+            clusters[row['Cluster']].append(row['Label'])
     return clusters
 
-def find_mrca_node(tree, tip_names):
-    """Find the MRCA node for a set of tip names."""
-    # Get all terminal nodes matching our tip names
+def find_mrca_and_parent(tree, tip_names):
+    """Find MRCA and its parent (second MRCA) for a set of tip names."""
     terminals = []
     for tip_name in tip_names:
-        # Find terminal that matches (handle the full header with cluster ID)
-        found = False
         for terminal in tree.get_terminals():
-            # Check if the tip_name is in the terminal name
             if tip_name in terminal.name:
                 terminals.append(terminal)
-                found = True
                 break
-        if not found:
-            print(f"Warning: Could not find tip '{tip_name}' in tree", file=sys.stderr)
     
-    if len(terminals) == 0:
-        return None
-    elif len(terminals) == 1:
-        # Single sequence cluster - return its parent
-        parent = tree.get_path(terminals[0])
-        if len(parent) > 1:
-            return parent[-2]  # Return parent node
-        return None
+    if not terminals:
+        return None, None
     
-    # Find MRCA of multiple terminals
+    if len(terminals) == 1:
+        path = tree.get_path(terminals[0])
+        if len(path) >= 2:
+            mrca = path[-2]
+            parent = path[-3] if len(path) >= 3 else None
+            return mrca, parent
+        return None, None
+    
     mrca = tree.common_ancestor(terminals)
-    return mrca
-
-def get_node_name(node):
-    """Get the name of a node (for internal nodes)."""
-    if node.name:
-        return node.name
-    # If no name, try to find it by confidence value or return None
-    return None
+    # Find parent of MRCA
+    parent = None
+    for clade in tree.find_clades():
+        if mrca in clade.clades:
+            parent = clade
+            break
+    
+    return mrca, parent
 
 def main():
     if len(sys.argv) != 5:
-        print("Usage: python extract_clade_mrcas.py <tree.nwk> <cluster.csv> <all_ancestral.fasta> <output_mrca.fasta>")
+        print("Usage: extract_clade_mrcas.py <tree.nwk> <cluster.csv> <ancestral.fasta> <output.fasta>")
         sys.exit(1)
 
-    tree_file = sys.argv[1]
-    cluster_csv = sys.argv[2]
-    ancestral_fasta = sys.argv[3]
-    output_fasta = sys.argv[4]
+    tree_file, cluster_csv, ancestral_fasta, output_fasta = sys.argv[1:5]
 
-    print(f"Loading tree from: {tree_file}")
     tree = Phylo.read(tree_file, "newick")
     
-    # Label internal nodes if they don't have names
-    node_counter = 1
-    for node in tree.get_nonterminals():
-        if not node.name or node.name == '':
-            node.name = f"Node{node_counter}"
-            node_counter += 1
+    # Label internal nodes
+    for i, node in enumerate(tree.get_nonterminals(), 1):
+        if not node.name:
+            node.name = f"Node{i}"
 
-    print(f"Parsing clusters from: {cluster_csv}")
     clusters = parse_cluster_csv(cluster_csv)
-    print(f"Found {len(clusters)} clusters")
-
-    # Find MRCA for each cluster
-    mrca_nodes = {}
-    for cluster_id, seq_ids in clusters.items():
-        print(f"\nCluster {cluster_id}: {len(seq_ids)} sequences")
-        mrca = find_mrca_node(tree, seq_ids)
-        if mrca:
-            node_name = get_node_name(mrca)
-            if node_name:
-                mrca_nodes[cluster_id] = node_name
-                print(f"  MRCA: {node_name}")
-            else:
-                print(f"  Warning: MRCA found but has no name")
-        else:
-            print(f"  Warning: Could not find MRCA")
-
-    # Read all ancestral sequences
-    print(f"\nReading ancestral sequences from: {ancestral_fasta}")
     all_ancestral = {rec.id: rec for rec in SeqIO.parse(ancestral_fasta, "fasta")}
-    print(f"Total ancestral sequences: {len(all_ancestral)}")
+    
+    output_seqs = []
+    for cluster_id, seq_ids in sorted(clusters.items()):
+        mrca, parent = find_mrca_and_parent(tree, seq_ids)
+        
+        # Collect nodes: MRCA and parent (second MRCA)
+        nodes_to_extract = []
+        if mrca and mrca.name:
+            nodes_to_extract.append((mrca.name, "MRCA"))
+        if parent and parent.name:
+            nodes_to_extract.append((parent.name, "MRCA2"))
+        
+        for node_name, label in nodes_to_extract:
+            if node_name in all_ancestral:
+                rec = all_ancestral[node_name]
+                rec.id = f"{node_name}|cluster_{cluster_id}_{label}"
+                rec.description = ""
+                output_seqs.append(rec)
+                print(f"Cluster {cluster_id}: {node_name} ({label})")
 
-    # Extract only MRCA sequences
-    mrca_sequences = []
-    for cluster_id, node_name in sorted(mrca_nodes.items()):
-        if node_name in all_ancestral:
-            record = all_ancestral[node_name]
-            # Add cluster info to description
-            record.description = f"cluster_{cluster_id}_MRCA"
-            mrca_sequences.append(record)
-            print(f"Extracted: {node_name} (cluster {cluster_id})")
-        else:
-            print(f"Warning: Node {node_name} not found in ancestral sequences", file=sys.stderr)
-
-    # Write filtered sequences
-    print(f"\nWriting {len(mrca_sequences)} MRCA sequences to: {output_fasta}")
-    SeqIO.write(mrca_sequences, output_fasta, "fasta")
-    print("Done!")
+    SeqIO.write(output_seqs, output_fasta, "fasta")
+    print(f"\nWrote {len(output_seqs)} sequences to {output_fasta}")
 
 if __name__ == "__main__":
     main()
-
