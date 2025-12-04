@@ -8,6 +8,7 @@
 ----------------------------------------------------------------------------------------
 */
 
+include { SANITIZE_HEADERS } from '../modules/local/sanitize_headers/main'
 include { MSA } from '../modules/local/msa/main'
 include { IQTREE } from '../modules/local/iqtree/main'
 include { AUTOPHY } from '../modules/local/autophy/main'
@@ -18,8 +19,11 @@ workflow ANCFLOW {
         input_fasta_ch
 
     main:
+        // Step 0: Sanitize FASTA headers for iq-tree/autophy compatibility
+        SANITIZE_HEADERS(input_fasta_ch)
+        
         // Step 1: Multiple Sequence Alignment
-        MSA(input_fasta_ch)
+        MSA(SANITIZE_HEADERS.out.fasta)
         
         // Step 2: Phylogenetic Tree Inference with IQ-TREE
         IQTREE(MSA.out.alignment)
@@ -41,5 +45,6 @@ workflow ANCFLOW {
         autophy_tree = ASR_AUTOPHY.out.tree
         autophy_dir = AUTOPHY.out.autophy_dir
         iqtree_outputs = IQTREE.out.all_outputs
+        header_mapping = SANITIZE_HEADERS.out.mapping
 }
 
