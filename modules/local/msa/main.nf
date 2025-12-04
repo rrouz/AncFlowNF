@@ -3,7 +3,7 @@ process MSA {
     label 'process_medium'
    
     input:
-    path modified_seqs
+    path seqs
     
     output:
     path 'aligned_protein_sequences.fasta', emit: alignment
@@ -12,12 +12,11 @@ process MSA {
     
     script:
     """
-    python ${params.bin_dir}/msa.py ${modified_seqs} aligned_protein_sequences.fasta
+    mafft --auto ${seqs} > aligned_protein_sequences.fasta
     touch msa_complete.txt
     
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        python: \$(python --version | sed 's/Python //g')
         mafft: \$(mafft --version 2>&1 | head -n1 || echo "unknown")
     END_VERSIONS
     """
@@ -29,7 +28,7 @@ process MSA {
     
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        python: \$(python --version | sed 's/Python //g')
+        mafft: "stub"
     END_VERSIONS
     """
 }
